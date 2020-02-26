@@ -16,27 +16,30 @@ private val restTemplate: TestRestTemplate? = null
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class OmsorgspengerSyktBarnControllerTest(@Autowired private val restTemplate: TestRestTemplate) {
 
-    val example = "{\n" +
-            "        \"søknadId\":\"XXXX\",\n" +
-            "        \"mottattDato\":\"260676\",\n" +
-            "        \"søker\":\"Per Person\"\n" +
-            "        \"barn\":\"Jens Person\"\n" +
-            "    }"
+
+
 
     @Test
-    fun reqsend(){
+    fun korrekt_json(){
+        var example = "{\"søknadId\":\"XXXX\",\"mottattDato\":\"260676\",\"søker\":\"Per Person\",\"barn\":\"Jens Person\"}"
         val baseUrl = "http://localhost:8080/recreq";
         val uri = URI(baseUrl)
-
         val headers: HttpHeaders = HttpHeaders()
         headers.setContentType(MediaType.APPLICATION_JSON)
-
         val request: HttpEntity<String> = HttpEntity<String>(example, headers)
-
-        println(request)
-
         val result = restTemplate!!.postForEntity(uri, request, String::class.java)
-        println(result.statusCode)
-        assert(true)
+        assert(result.statusCodeValue == 200)
+    }
+
+    @Test
+    fun misformet_json_skal_stoppe(){
+        var example = "{\"søknadId\":\"XXXX\",\"mottattDato\":\"260676\",\"søker\":\"Per Person\"\"barn\":\"Jens Person\""
+        val baseUrl = "http://localhost:8080/recreq";
+        val uri = URI(baseUrl)
+        val headers: HttpHeaders = HttpHeaders()
+        headers.setContentType(MediaType.APPLICATION_JSON)
+        val request: HttpEntity<String> = HttpEntity<String>(example, headers)
+        val result = restTemplate!!.postForEntity(uri, request, String::class.java)
+        assert(result.statusCodeValue == 500)
     }
 }
