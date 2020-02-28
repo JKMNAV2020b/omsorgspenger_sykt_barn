@@ -13,17 +13,6 @@ import org.springframework.web.bind.annotation.*
 @RestController
 class OmsorgspengerSyktBarnController {
 
-
-
-
-
-
-
-
-
-
-
-
     fun handler(personNummer:String):String{
         return personNummer
     }
