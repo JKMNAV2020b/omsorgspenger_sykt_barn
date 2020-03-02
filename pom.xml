@@ -9,9 +9,9 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>nav</groupId>
-    <artifactId>omsorgspenger_sykt_barn</artifactId>
+    <artifactId>K9Aarskvantum</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>omsorgspenger_sykt_barn</name>
+    <name>K9Aarskvantum</name>
     <description>Omsorgspenger</description>
 
     <properties>
