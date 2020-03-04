@@ -43,20 +43,9 @@ class OmsorgspengerSyktBarnController {
             var date = LocalDate.parse(o.barn.fødselsdato.toString())
             println(Period.between(o.barn.fødselsdato,current.toLocalDate()).years)
 
-
-
-
-
-
-
-
-
-
         }catch (e:Exception){
             println(e.toString())
         }
-
-
 
         return ResponseEntity.ok().build()
     }
