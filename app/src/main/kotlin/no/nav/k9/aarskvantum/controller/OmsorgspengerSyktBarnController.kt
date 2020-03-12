@@ -25,9 +25,6 @@ data class Person(
         val medlemskap:String?,
         val sosialStatus:String?,
         val arbeidsStatus:String?
-
-
-
 ) {
     /*var age: Int = 0
     var idnummer:String= "";
@@ -64,6 +61,7 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
     fun webpage(id:String):String{
 
         println(id)
+
         var html="<html><body><form method=\"GET\" action=\"http://localhost:8090/web-sak?id=kko\"><input type=\"text\" name=\"tes\"><input type=\"submit\"></input></form>"
         var fig=""
         var pig=""
@@ -100,8 +98,9 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
                 }
 
                 var muligheter = listOf("arbeidstaker","frilans","selvstendig","arbeidsløs")
-                
-                var mymenu= """<select id=menu onchange=alert('hei')>"""
+
+                var mymenu= """<select id='menu' 
+                    onchange='e = document.getElementById("menu");if(e.options[e.selectedIndex].value == "arbeidsløs"){document.getElementById("omsorgsdager").value=0;}else{document.getElementById("omsorgsdager").value=10}'>""".trimMargin()
                 for(i in muligheter){
                     var sx = ""
                     if(i.equals(person.arbeidsStatus)){
@@ -179,6 +178,38 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
     @RequestMapping("/")
     fun test(@RequestParam(value = "personNummer", defaultValue = "") name: String) = "hello"
 
+    fun regnutSamvær():Int{
+        return 10
+    }
+
+    // oppdaterer database
+
+    fun populateDataBaseFromJson(person:Person, database:HashMap<String?,PersonEntry?>){
+        if(person == null){
+            return
+        }
+        else{
+            if(!database.containsKey(person.norskIdentitetsnummer)){
+                person.partner?.forEach(){
+                    println(it)
+                    populateDataBaseFromJson(it,database)
+                    database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær())
+                }
+                person.tidligerepartnere?.forEach(){
+                    populateDataBaseFromJson(it,database)
+                    database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær())
+                }
+                person.barn?.forEach(){
+                    populateDataBaseFromJson(it,database)
+                    database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær())
+                }
+                database[person?.norskIdentitetsnummer] = PersonEntry(person,regnutSamvær())
+            }
+        }
+
+
+    }
+
     @PostMapping(path = arrayOf("/test"), consumes = arrayOf(MediaType.APPLICATION_JSON_VALUE))
     fun test3(@RequestBody form: String, bindingResult: BindingResult) : ResponseEntity<Unit> {
 
@@ -218,9 +249,15 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
 
         var suck:Person = mapper.readValue<Person>(form)
         println(suck.norskIdentitetsnummer)
+
+        populateDataBaseFromJson(suck,database)
+        println("*****>"+database.keys.size)
+
+        /*
         var personX:PersonEntry = PersonEntry(suck,10)
         database[suck.norskIdentitetsnummer]=personX
         println(database.keys.size)
+        */
 
         // remmeber test for invalid json
         /*println(t2.id)
@@ -231,6 +268,8 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
 
         return ResponseEntity.ok().build()
     }
+
+
 
     @PostMapping(path = arrayOf("/recreq"), consumes = arrayOf(MediaType.APPLICATION_JSON_VALUE))
     fun test2(@RequestBody form: String, bindingResult: BindingResult) : ResponseEntity<Unit> {
