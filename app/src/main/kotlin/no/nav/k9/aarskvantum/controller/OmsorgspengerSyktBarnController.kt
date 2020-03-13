@@ -3,12 +3,16 @@ package no.nav.k9.aarskvantum.controller
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import no.nav.k9.aarskvantum.service.Aldersbergning
-import no.nav.k9.søknad.JsonUtils
 import no.nav.k9.søknad.omsorgspenger.OmsorgspengerSøknad
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.BindingResult
 import org.springframework.web.bind.annotation.*
+import java.time.Duration
+import java.time.LocalDate
+import java.time.Period
+import java.time.ZonedDateTime
+
 
 data class PersonEntry(
         val person:Person,
@@ -24,17 +28,108 @@ data class Person(
         val bosted:String?,
         val medlemskap:String?,
         val sosialStatus:String?,
-        val arbeidsStatus:String?
+        val arbeidsStatus:String?,
+        val alder:String?
 ) {
-    /*var age: Int = 0
-    var idnummer:String= "";
-    var barn: List<Person> = emptyList()
-    var foreldre:List<Person> = emptyList()
-    var partnere:List<Person> = emptyList()
-    var bosted:String=""
-    var medlemskap = ""
-    var sosialstatus=""
-    var arbeidsstatus=""*/
+
+    fun alder():Int{
+
+        try{
+            norskIdentitetsnummer?.let{
+                    var alder = it.subSequence(0,6)
+                    var dager = Integer.parseInt(alder.substring(0,2)).toString()
+                    if(dager.length == 1){
+                        dager="0"+dager
+                    }
+                    var måneder = Integer.parseInt(alder.substring(2,4)).toString()
+                    if(måneder.length == 1){
+                        måneder="0"+måneder
+                    }
+                    var år = Integer.parseInt(alder.substring(4,6))
+                    var alderfraPersonNummer = LocalDate.now().year.toString().substring(0,2)+år+"-"+måneder+"-"+dager+"T00:00:00.000Z"
+                    println(alderfraPersonNummer)
+            }
+        }catch (e:java.lang.Exception){
+
+        }
+
+        try {
+
+
+
+            /*println("<------>")
+            println(this.alder)
+            val formatter2 = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+            val dateTime = "2015-02-19T02:06:58.147Z"
+            println(this.alder+"T02:06:58.147Z")
+            println(dateTime)
+            //val z: ZonedDateTime = ZonedDateTime.parse(this.alder,formatter2)
+            //val z: ZonedDateTime = ZonedDateTime.parse(this.alder)*/
+            // hvorfor er tiden så vanskelig å parse?
+
+
+
+            if(this.alder != null){
+                var norsKIdentitetsnummberAlder = this.norskIdentitetsnummer?.subSequence(0,6) as String
+
+
+                val z: ZonedDateTime = ZonedDateTime.parse(this.alder+"T00:00:00.000Z")
+                println(z.toLocalTime())
+                var alder = this.norskIdentitetsnummer?.subSequence(0,6) as String
+                //var dd = toInt(alder.subSequence(0,2).toString())
+                var dd = Integer.parseInt(alder.substring(0,2))
+                var mm = Integer.parseInt(alder.substring(2,4))
+                var yy = Integer.parseInt(alder.substring(4,6))
+
+                // pass på århundre
+                // fiks nuller foran en talls år
+
+                println("--------------->")
+                println(dd)
+                println(mm)
+                println(yy)
+
+                // vi må finne ut av hvordan vi løser det mellom 100 år..
+
+                var alderfraPersonNummer = "20"+yy+"-0"+mm+"-"+dd+"T00:00:00.000Z"
+                val z2: ZonedDateTime = ZonedDateTime.parse(alderfraPersonNummer)
+
+                println("<------------------------------->")
+                //println(z2.compareTo(ZonedDateTime.now()))
+                val d: Duration = Duration.between(ZonedDateTime.now(), z2)
+                //d.to(
+                var p = ZonedDateTime.now().minusYears(12)
+
+                println(p.compareTo(z2))
+
+                if(p.compareTo(z2) < 0){
+                    // kan få penger
+                }
+
+
+                println(z2.year)
+                //println(ZonedDateTime.now().minusYears(z2.year as Long))
+
+                println(d)
+
+                //Period.between(z2,ZonedDateTime.now())
+                /*ZonedDateTime.now() - z2
+                ZonedDateTi*/
+                //Period.between(fødseldato, LocalDateTime.now().toLocalDate()).years < 12
+
+
+
+            }
+
+
+        }
+        catch (e:Exception){
+            println(e.toString())
+        }
+            return 1;
+    }
+
+
 }
 
 data class TestModel(
@@ -178,7 +273,14 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
     @RequestMapping("/")
     fun test(@RequestParam(value = "personNummer", defaultValue = "") name: String) = "hello"
 
-    fun regnutSamvær():Int{
+
+    fun regnutSamvær(person:Person):Int{
+
+
+        person.barn?.forEach(){
+            it.alder()
+        }
+
         return 10
     }
 
@@ -189,21 +291,30 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
             return
         }
         else{
+
+            // komme seg unna ?
+            ///val p = person.partner as List<Person>
+
+            /*var dx = database as HashMap<String?,PersonEntry?>
+            dx.containsKey(person.norskIdentitetsnummer)*/
+
             if(!database.containsKey(person.norskIdentitetsnummer)){
                 person.partner?.forEach(){
-                    println(it)
+                    println("--->"+it)
                     populateDataBaseFromJson(it,database)
-                    database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær())
+                    database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær(it))
                 }
                 person.tidligerepartnere?.forEach(){
+                    println("--->22"+it)
                     populateDataBaseFromJson(it,database)
-                    database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær())
+                    database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær(it))
                 }
                 person.barn?.forEach(){
+                    println("--->33"+it)
                     populateDataBaseFromJson(it,database)
-                    database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær())
+                    database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær(it))
                 }
-                database[person?.norskIdentitetsnummer] = PersonEntry(person,regnutSamvær())
+                database[person?.norskIdentitetsnummer] = PersonEntry(person,regnutSamvær(person))
             }
         }
 
@@ -225,13 +336,13 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
         println(fromApp.norskIdentitetsnummer)
         */
         //var barn:Person = Person("76767",null)
-        var olejakob:Person = Person("190215XXXXX",null,null,null,null,null,null,null,null)
-        var heidi:Person = Person("190215XXXXX",null,null,null,null,null,null,null,null)
+        /*var olejakob:Person = Person("190215XXXXX",null,null,null,null,null,null,null,null)
+        var heidi:Person = Person("190215XXXXX",null,null,null,null,null,null,null,null)*/
         //var person:Person = Person("76767",barn)
         //var list: List<Person> = listOf(barn,barn)
         //var personBarn:Person = Person("76767",list)
         //println(mapper.writeValueAsString(personBarn))
-        var person:Person = Person("26067639501",listOf(olejakob),null,listOf(heidi),null,"Oslo","Folketrygd","gift","arbeidstaker")
+        //var person:Person = Person("26067639501",listOf(olejakob),null,listOf(heidi),null,"Oslo","Folketrygd","gift","arbeidstaker")
 
         //var TestModel = JsonUtils.fromString("{\"id\":42}",TestModel::class.java) as TestModel
         //var TestModel = JsonUtils.fromString(form,TestModel::class.java) as TestModel
@@ -241,7 +352,7 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
         //println(t.id)
 
 
-        println(mapper.writeValueAsString(person))
+        //println(mapper.writeValueAsString(person))
 
 
         /*var fuck:Person = mapper.readValue<Person>("{\"norskIdentitetsnummer\":\"26067639501\",\"barn\":{\"norskIdentitetsnummer\":\"2606763950100000\"}}")
