@@ -10,7 +10,6 @@ import org.springframework.validation.BindingResult
 import org.springframework.web.bind.annotation.*
 import java.time.Duration
 import java.time.LocalDate
-import java.time.Period
 import java.time.ZonedDateTime
 
 
@@ -29,107 +28,52 @@ data class Person(
         val medlemskap:String?,
         val sosialStatus:String?,
         val arbeidsStatus:String?,
-        val alder:String?
+        val alder:String?,
+        val kronisktSykt:Boolean?
 ) {
 
-    fun alder():Int{
-
-        try{
-            norskIdentitetsnummer?.let{
-                    var alder = it.subSequence(0,6)
-                    var dager = Integer.parseInt(alder.substring(0,2)).toString()
-                    if(dager.length == 1){
-                        dager="0"+dager
-                    }
-                    var måneder = Integer.parseInt(alder.substring(2,4)).toString()
-                    if(måneder.length == 1){
-                        måneder="0"+måneder
-                    }
-                    var år = Integer.parseInt(alder.substring(4,6))
-                    var alderfraPersonNummer = LocalDate.now().year.toString().substring(0,2)+år+"-"+måneder+"-"+dager+"T00:00:00.000Z"
-                    println(alderfraPersonNummer)
+    // to do put values in properties
+    fun rate():Long{
+        val aldersrate = kronisktSykt?.let {
+            if(it){18L}
+            else{
+                12L
             }
-        }catch (e:java.lang.Exception){
-
-        }
-
-        try {
-
-
-
-            /*println("<------>")
-            println(this.alder)
-            val formatter2 = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
-            val dateTime = "2015-02-19T02:06:58.147Z"
-            println(this.alder+"T02:06:58.147Z")
-            println(dateTime)
-            //val z: ZonedDateTime = ZonedDateTime.parse(this.alder,formatter2)
-            //val z: ZonedDateTime = ZonedDateTime.parse(this.alder)*/
-            // hvorfor er tiden så vanskelig å parse?
-
-
-
-            if(this.alder != null){
-                var norsKIdentitetsnummberAlder = this.norskIdentitetsnummer?.subSequence(0,6) as String
-
-
-                val z: ZonedDateTime = ZonedDateTime.parse(this.alder+"T00:00:00.000Z")
-                println(z.toLocalTime())
-                var alder = this.norskIdentitetsnummer?.subSequence(0,6) as String
-                //var dd = toInt(alder.subSequence(0,2).toString())
-                var dd = Integer.parseInt(alder.substring(0,2))
-                var mm = Integer.parseInt(alder.substring(2,4))
-                var yy = Integer.parseInt(alder.substring(4,6))
-
-                // pass på århundre
-                // fiks nuller foran en talls år
-
-                println("--------------->")
-                println(dd)
-                println(mm)
-                println(yy)
-
-                // vi må finne ut av hvordan vi løser det mellom 100 år..
-
-                var alderfraPersonNummer = "20"+yy+"-0"+mm+"-"+dd+"T00:00:00.000Z"
-                val z2: ZonedDateTime = ZonedDateTime.parse(alderfraPersonNummer)
-
-                println("<------------------------------->")
-                //println(z2.compareTo(ZonedDateTime.now()))
-                val d: Duration = Duration.between(ZonedDateTime.now(), z2)
-                //d.to(
-                var p = ZonedDateTime.now().minusYears(12)
-
-                println(p.compareTo(z2))
-
-                if(p.compareTo(z2) < 0){
-                    // kan få penger
-                }
-
-
-                println(z2.year)
-                //println(ZonedDateTime.now().minusYears(z2.year as Long))
-
-                println(d)
-
-                //Period.between(z2,ZonedDateTime.now())
-                /*ZonedDateTime.now() - z2
-                ZonedDateTi*/
-                //Period.between(fødseldato, LocalDateTime.now().toLocalDate()).years < 12
-
-
-
-            }
-
-
-        }
-        catch (e:Exception){
-            println(e.toString())
-        }
-            return 1;
+        }?:{
+            12L
+        }.invoke()
+        return aldersrate
     }
+    fun alder():Boolean{
+        val fødseldato = norskIdentitetsnummer?.let{
+            var fødselsnummer = it.subSequence(0, 6)
+            var dager = Integer.parseInt(fødselsnummer.substring(0, 2)).toString()
+            if (dager.length == 1) {
+                dager = "0" + dager
+            }
+            var måneder = Integer.parseInt(fødselsnummer.substring(2, 4)).toString()
+            if (måneder.length == 1) {
+                måneder = "0" + måneder
+            }
+            var år = Integer.parseInt(fødselsnummer.substring(4, 6))
+            var alderfraPersonNummer = LocalDate.now().year.toString().substring(0, 2) + år + "-" + måneder + "-" + dager + "T00:00:00.000Z"
+            alderfraPersonNummer
+        }?:{
+            val fødseldato = alder?.let{
+                it+ "T00:00:00.000Z"
+            }?:{
+                // add some sort of logging here...
+                // and figure out what to do with persons that does
+                ""
+            }.invoke()
+            fødseldato
+        }.invoke();
 
-
+        if(ZonedDateTime.now().minusYears(rate()).compareTo(ZonedDateTime.parse(fødseldato)) < 0){
+            return true
+        }
+        return false
+    }
 }
 
 data class TestModel(
@@ -277,9 +221,45 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
     fun regnutSamvær(person:Person):Int{
 
 
+        // sjekk om
+
+        var omsorgpenger = 10L
+        var antallBarnMedOmsorgspenger = 0
+        var maxBarnAlder = 0L
         person.barn?.forEach(){
-            it.alder()
+            if(it.alder()){
+                antallBarnMedOmsorgspenger+=1
+                if(maxBarnAlder<it.rate()){
+                    maxBarnAlder = it.rate()
+                }
+            }
         }
+
+        if(!(person.sosialStatus in arrayOf("gift","samboer"))){
+            if(maxBarnAlder == 18L){
+                omsorgpenger*=2L;
+            }
+            omsorgpenger*=2L
+        }
+        else{
+            if(maxBarnAlder == 18L){
+                omsorgpenger*=2L;
+            }
+        }
+
+        println("***********")
+        println(omsorgpenger)
+        println("***********")
+
+
+
+
+
+        person.partner
+
+        println("<**********************>")
+        println(antallBarnMedOmsorgspenger)
+        println("<**********************>")
 
         return 10
     }
@@ -299,7 +279,7 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
             dx.containsKey(person.norskIdentitetsnummer)*/
 
             if(!database.containsKey(person.norskIdentitetsnummer)){
-                person.partner?.forEach(){
+                /*person.partner?.forEach(){
                     println("--->"+it)
                     populateDataBaseFromJson(it,database)
                     database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær(it))
@@ -313,7 +293,10 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
                     println("--->33"+it)
                     populateDataBaseFromJson(it,database)
                     database[it?.norskIdentitetsnummer] = PersonEntry(it,regnutSamvær(it))
-                }
+                }*/
+                database[person?.norskIdentitetsnummer] = PersonEntry(person,regnutSamvær(person))
+            }
+            else{
                 database[person?.norskIdentitetsnummer] = PersonEntry(person,regnutSamvær(person))
             }
         }
