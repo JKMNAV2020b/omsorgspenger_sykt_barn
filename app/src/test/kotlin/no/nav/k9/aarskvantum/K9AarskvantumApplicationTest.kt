@@ -8,6 +8,7 @@ class K9AarskvantumApplicationTest {
 
     @Test
     fun contextLoads() {
+    assert(0==0)
     }
 
 }

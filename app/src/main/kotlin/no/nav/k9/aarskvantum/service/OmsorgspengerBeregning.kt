@@ -3,10 +3,7 @@ package no.nav.k9.aarskvantum.service
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import no.nav.k9.aarskvantum.controller.Person
-import no.nav.k9.aarskvantum.controller.PersonEntry
-import no.nav.k9.søknad.felles.NorskIdentitetsnummer
 import org.springframework.stereotype.Service
-import java.io.IOException
 
 @Service
 class OmsorgspengerBeregning {
