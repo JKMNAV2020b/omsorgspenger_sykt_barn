@@ -3,7 +3,10 @@ package no.nav.k9.aarskvantum.controller
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import no.nav.k9.aarskvantum.service.Aldersbergning
+import no.nav.k9.aarskvantum.service.OmsorgspengerBeregning
+import no.nav.k9.søknad.felles.NorskIdentitetsnummer
 import no.nav.k9.søknad.omsorgspenger.OmsorgspengerSøknad
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.BindingResult
@@ -29,7 +32,8 @@ data class Person(
         val sosialStatus:String?,
         val arbeidsStatus:String?,
         val alder:String?,
-        val kronisktSykt:Boolean?
+        val kronisktSykt:Boolean?,
+        var omsorgspengerperaar:Int?
 ) {
 
     // to do put values in properties
@@ -74,6 +78,41 @@ data class Person(
         }
         return false
     }
+
+    fun omsorgspenger():Boolean{
+        var omsorgpenger = 0L
+        var antallBarnMedOmsorgspenger = 0
+        var maxBarnAlder = 0L
+        var kronisktSykt = false
+
+        if((this.arbeidsStatus in arrayOf("arbeidstaker","frilans","selvstendig"))){
+            omsorgpenger=10L
+        }
+
+        this.barn?.forEach(){ it ->
+            if(it.alder()){
+                antallBarnMedOmsorgspenger+=1
+                if(maxBarnAlder<it.rate()){
+                    maxBarnAlder = it.rate()
+                }
+                if(it.kronisktSykt.let { it } == true){
+                    kronisktSykt = true
+                }
+            }
+        }
+
+        if(antallBarnMedOmsorgspenger >= 3){
+            omsorgpenger+=5;
+        }
+        if(kronisktSykt){
+            omsorgpenger*=2L;
+        }
+        if(!(this.sosialStatus in arrayOf("gift","samboer"))){
+            omsorgpenger*=2L
+        }
+        this.omsorgspengerperaar = omsorgpenger.toInt()
+        return true
+    }
 }
 
 data class TestModel(
@@ -84,7 +123,7 @@ data class TestModel(
 
 
 @RestController
-class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
+class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning, val omsorgspengerBeregningService: OmsorgspengerBeregning) {
 
 
     lateinit var database:HashMap<String?,PersonEntry?>
@@ -209,6 +248,23 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
     fun test3(@RequestParam(value = "tes", defaultValue = "") name: String) = webpage(name)
     //fun test3(@RequestParam(value = "tes", defaultValue = "") name: String) = " <html><body><form method=\"GET\" action=\"http://localhost:8090/web-sak?id=kko\"><input type=\"text\" name=\"tes\"><input type=\"submit\"></input><h3></h3></body></html></form>"
 
+
+    fun fåomsorgspenger(id:String) : ResponseEntity<ByteArray>{
+        val output:ResponseEntity<ByteArray> = database[id]?.let {
+            it ->
+            it.omsorgsdager
+        }.let {
+            ResponseEntity("{}".toByteArray(), null, HttpStatus.OK)
+        }?:{
+            ResponseEntity("{}".toByteArray(), null, HttpStatus.OK)
+        }.invoke()
+        return output
+    }
+
+    @GetMapping
+    @RequestMapping("/omsorgspenger")
+    fun omsorgspenger(@RequestParam(value = "personNummer", defaultValue = "") name: String) = fåomsorgspenger(name)
+
     @GetMapping
     @RequestMapping("/listpartner")
     fun listpartner(@RequestParam(value = "personNummer", defaultValue = "") name: String) = "---<"+listpartners(name)
@@ -217,56 +273,52 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
     @RequestMapping("/")
     fun test(@RequestParam(value = "personNummer", defaultValue = "") name: String) = "hello"
 
-
     fun regnutSamvær(person:Person):Int{
-
 
         // sjekk om
 
-        var omsorgpenger = 10L
+        var omsorgpenger = 0L
         var antallBarnMedOmsorgspenger = 0
         var maxBarnAlder = 0L
-        person.barn?.forEach(){
+        var kronisktSykt = false
+
+        if((person.arbeidsStatus in arrayOf("arbeidstaker","frilans","selvstendig"))){
+            omsorgpenger=10L
+        }
+
+        person.barn?.forEach(){ it ->
             if(it.alder()){
                 antallBarnMedOmsorgspenger+=1
                 if(maxBarnAlder<it.rate()){
                     maxBarnAlder = it.rate()
                 }
+                if(it.kronisktSykt.let { it } == true){
+                    kronisktSykt = true
+                }
             }
         }
 
+        if(antallBarnMedOmsorgspenger >= 3){
+            omsorgpenger+=5;
+        }
+        if(kronisktSykt){
+            omsorgpenger*=2L;
+        }
         if(!(person.sosialStatus in arrayOf("gift","samboer"))){
-            if(maxBarnAlder == 18L){
-                omsorgpenger*=2L;
-            }
             omsorgpenger*=2L
         }
-        else{
-            if(maxBarnAlder == 18L){
-                omsorgpenger*=2L;
-            }
-        }
 
-        println("***********")
-        println(omsorgpenger)
-        println("***********")
-
-
-
-
-
-        person.partner
-
-        println("<**********************>")
-        println(antallBarnMedOmsorgspenger)
-        println("<**********************>")
-
-        return 10
+        return omsorgpenger.toInt()
     }
+
+
 
     // oppdaterer database
 
     fun populateDataBaseFromJson(person:Person, database:HashMap<String?,PersonEntry?>){
+
+
+
         if(person == null){
             return
         }
@@ -277,6 +329,8 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
 
             /*var dx = database as HashMap<String?,PersonEntry?>
             dx.containsKey(person.norskIdentitetsnummer)*/
+
+
 
             if(!database.containsKey(person.norskIdentitetsnummer)){
                 /*person.partner?.forEach(){
@@ -304,65 +358,28 @@ class OmsorgspengerSyktBarnController(val aldersbergning: Aldersbergning) {
 
     }
 
-    @PostMapping(path = arrayOf("/test"), consumes = arrayOf(MediaType.APPLICATION_JSON_VALUE))
-    fun test3(@RequestBody form: String, bindingResult: BindingResult) : ResponseEntity<Unit> {
 
+
+    @PostMapping(path = arrayOf("/soknad"), consumes = arrayOf(MediaType.APPLICATION_JSON_VALUE))
+    fun søknad(@RequestBody form: String, bindingResult: BindingResult) : ResponseEntity<Unit> {
         val mapper = jacksonObjectMapper()
-        /*var json = "{\"id\":42}"
-        var t:TestModel = mapper.readValue<TestModel>(json)*/
-
-        //var t2:TestModel = mapper.readValue<TestModel>(form)
-
-        /*
-        var fromApp:Person = mapper.readValue<Person>(form)
-        println(fromApp.norskIdentitetsnummer)
-        println(fromApp.norskIdentitetsnummer)
-        */
-        //var barn:Person = Person("76767",null)
-        /*var olejakob:Person = Person("190215XXXXX",null,null,null,null,null,null,null,null)
-        var heidi:Person = Person("190215XXXXX",null,null,null,null,null,null,null,null)*/
-        //var person:Person = Person("76767",barn)
-        //var list: List<Person> = listOf(barn,barn)
-        //var personBarn:Person = Person("76767",list)
-        //println(mapper.writeValueAsString(personBarn))
-        //var person:Person = Person("26067639501",listOf(olejakob),null,listOf(heidi),null,"Oslo","Folketrygd","gift","arbeidstaker")
-
-        //var TestModel = JsonUtils.fromString("{\"id\":42}",TestModel::class.java) as TestModel
-        //var TestModel = JsonUtils.fromString(form,TestModel::class.java) as TestModel
-        //val person = JsonUtils.fromString(form, Person::class.java) as Person
-        //OmsorgspengerSøknad.SerDes.deserialize(form)
-        println(form)
-        //println(t.id)
-
-
-        //println(mapper.writeValueAsString(person))
-
-
-        /*var fuck:Person = mapper.readValue<Person>("{\"norskIdentitetsnummer\":\"26067639501\",\"barn\":{\"norskIdentitetsnummer\":\"2606763950100000\"}}")
-        println(fuck.barn?.norskIdentitetsnummer)*/
-
-        var suck:Person = mapper.readValue<Person>(form)
-        println(suck.norskIdentitetsnummer)
-
-        populateDataBaseFromJson(suck,database)
-        println("*****>"+database.keys.size)
-
-        /*
-        var personX:PersonEntry = PersonEntry(suck,10)
-        database[suck.norskIdentitetsnummer]=personX
-        println(database.keys.size)
-        */
-
-        // remmeber test for invalid json
-        /*println(t2.id)
-        println(t2.navn)*/
-
-        /*var fromApp:Person = mapper.readValue<Person>(form)
-        println(fromApp.barn?.size)*/
-
-        return ResponseEntity.ok().build()
+        if(omsorgspengerBeregningService.beregn(form)){
+            return ResponseEntity.ok().build()
+        }
+        return ResponseEntity.status(500).build()
     }
 
+    @GetMapping
+    @RequestMapping("/visomsorgspenger")
+    fun visomsorgspenger(@RequestParam(value = "norskIdentitetsnummer]", defaultValue = "") verdi: String):ResponseEntity<String>{
+        return ResponseEntity("{\"omsorgspenger\" : "+omsorgspengerBeregningService.vis(verdi)+"}", null, HttpStatus.OK)
+    }
+
+/*
+    @GetMapping
+    @RequestMapping("/visomsorgspenger")
+    fun omsorgspenger(@RequestParam(value = "personNummer", defaultValue = "") name: String) = omsorgspengerBeregningService.vis(norskIdentitetsnummer = )
+*/
 
 
     @PostMapping(path = arrayOf("/recreq"), consumes = arrayOf(MediaType.APPLICATION_JSON_VALUE))
