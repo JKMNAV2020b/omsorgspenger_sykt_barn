@@ -8,21 +8,6 @@ import org.springframework.http.ResponseEntity
 import org.springframework.validation.BindingResult
 import org.springframework.web.bind.annotation.*
 
-
-data class PersonEntry(
-        val person:Person,
-        val omsorgsdager:Int?
-)
-
-
-
-data class TestModel(
-        val id: Int,
-        val navn:String
-)
-
-
-
 @RestController
 class OmsorgspengerSyktBarnController(val omsorgspengerBeregningService: OmsorgspengerBeregning) {
 
