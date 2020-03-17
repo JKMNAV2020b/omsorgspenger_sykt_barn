@@ -83,11 +83,11 @@
     </dependencies>
 
     <repositories>
-        <repository>
+        <!--<repository>
             <id>k9-format</id>
             <name>k9-format repo</name>
             <url>https://maven.pkg.github.com/navikt/k9-format</url>
-        </repository>
+        </repository>-->
     </repositories>
 
     <build>
