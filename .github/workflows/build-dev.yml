@@ -8,7 +8,7 @@ on:
       - 'CODEOWNERS'
     branches:
       - '*'
-      - '!master'
+      #- '!master'
 env:
   IMAGE_BASE: docker.pkg.github.com/${{ github.repository }}/k9-aarskvantum
 jobs:
