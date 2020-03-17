@@ -50,6 +50,7 @@ data class Person(
             }?:{
                 // add some sort of logging here...
                 // and figure out what to do with persons that does
+                //
                 ""
             }.invoke()
             fødseldato
